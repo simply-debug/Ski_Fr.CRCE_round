@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Handsfree benchmark</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { margin: 0; font: 15px/1.4 system-ui, Arial, sans-serif; background: #f8f9fa; color: #202124; }
+  header { padding: 12px 20px; background: #fff; border-bottom: 1px solid #dadce0; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0 12px 0 0; }
+  select, button.ctl { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid #dadce0; background: #fff; cursor: pointer; }
+  button.start { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+  #arena { position: relative; height: 62vh; margin: 14px 20px; background: #fff; border: 2px dashed #bdc1c6; border-radius: 12px; }
+  #target { position: absolute; width: 84px; height: 84px; border-radius: 50%; border: 0; background: #ea4335; color: #fff;
+            font-size: 22px; font-weight: 700; cursor: pointer; transform: translate(-50%, -50%); display: none; }
+  #msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #5f6368; padding: 20px; }
+  table { margin: 0 20px 20px; border-collapse: collapse; background: #fff; }
+  th, td { border: 1px solid #dadce0; padding: 6px 12px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  #live { margin-left: auto; color: #5f6368; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Handsfree benchmark</h1>
+  <label>Input method:
+    <select id="method"><option>Mouse</option><option>Handsfree</option><option>Keyboard</option></select>
+  </label>
+  <button class="ctl start" id="start">Start (10 targets)</button>
+  <button class="ctl" id="copy">Copy results as CSV</button>
+  <button class="ctl" id="clear">Clear results</button>
+  <span id="live"></span>
+</header>
+
+<div id="arena">
+  <div id="msg">Pick the input method, press Start, then click each red circle as fast and accurately as you can.<br />
+    Run it once with the mouse, then again with Handsfree, and compare the table below.</div>
+  <button id="target">1</button>
+</div>
+
+<table id="results">
+  <thead><tr><th>Method</th><th>Total time (s)</th><th>Avg per target (s)</th><th>Misses</th><th>Accuracy</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script>
+  // Same 10 positions every run so methods are compared fairly (percent of the arena).
+  const POS = [[15,25],[80,20],[50,50],[20,75],[85,70],[35,20],[65,80],[10,50],[90,45],[50,15]];
+  const $ = (id) => document.getElementById(id);
+  const arena = $('arena'), target = $('target'), msg = $('msg');
+  let idx = -1, shownAt = 0, t0 = 0, misses = 0, running = false, times = [];
+  let rows = [];
+  try { rows = JSON.parse(localStorage.getItem('hfRows') || '[]'); } catch (_) {}
+
+  function renderRows() {
+    const tb = document.querySelector('#results tbody');
+    tb.innerHTML = '';
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      for (const v of [r.method, r.total, r.avg, r.misses, r.acc]) {
+        const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+  }
+  function save() { try { localStorage.setItem('hfRows', JSON.stringify(rows)); } catch (_) {} }
+
+  function showNext() {
+    idx++;
+    if (idx >= POS.length) return finish();
+    const [x, y] = POS[idx];
+    target.style.left = x + '%'; target.style.top = y + '%';
+    target.textContent = String(idx + 1);
+    target.style.display = 'block';
+    shownAt = performance.now();
+    $('live').textContent = `Target ${idx + 1} / ${POS.length} · misses ${misses}`;
+  }
+  function finish() {
+    running = false;
+    target.style.display = 'none';
+    const total = (performance.now() - t0) / 1000;
+    const acc = Math.round((POS.length / (POS.length + misses)) * 100);
+    rows.push({ method: $('method').value, total: total.toFixed(1), avg: (total / POS.length).toFixed(2), misses, acc: acc + '%' });
+    save(); renderRows();
+    msg.style.display = 'grid';
+    msg.textContent = `Done in ${total.toFixed(1)} s with ${misses} miss(es). Change the input method and run again to compare.`;
+    $('live').textContent = '';
+  }
+
+  $('start').addEventListener('click', () => {
+    idx = -1; misses = 0; times = []; running = true;
+    msg.style.display = 'none';
+    t0 = performance.now();
+    showNext();
+  });
+  target.addEventListener('click', (e) => {
+    if (!running) return;
+    e.stopPropagation();
+    times.push(performance.now() - shownAt);
+    showNext();
+  });
+  arena.addEventListener('click', () => {
+    if (!running) return;
+    misses++;
+    $('live').textContent = `Target ${idx + 1} / ${POS.length} · misses ${misses}`;
+  });
+  $('copy').addEventListener('click', async () => {
+    const csv = 'method,total_s,avg_s,misses,accuracy\n' + rows.map((r) => [r.method, r.total, r.avg, r.misses, r.acc].join(',')).join('\n');
+    try { await navigator.clipboard.writeText(csv); $('live').textContent = 'CSV copied'; } catch (_) { prompt('Copy this:', csv); }
+  });
+  $('clear').addEventListener('click', () => { rows = []; save(); renderRows(); });
+  renderRows();
+</script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+:root {
+  color-scheme: dark;
+
+  /* Liquid Glass tokens */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-hover: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-blur: blur(24px) saturate(180%) brightness(1.08);
+
+  --text-primary: #f5f5f7;
+  --text-secondary: #b0b3be;
+  --accent: #0a84ff;
+  --accent-glow: rgba(10, 132, 255, 0.35);
+
+  /* Diagonal sheen that mimics curved glass catching light */
+  --sheen: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.04) 30%,
+    rgba(255, 255, 255, 0) 55%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+
+  /* Specular edge: top-left light catch, bottom-right rim, inner glow */
+  --specular:
+    inset 1.5px 1.5px 1px rgba(255, 255, 255, 0.35),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 18px rgba(255, 255, 255, 0.04);
+
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  color: var(--text-primary);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: transparent;
+  min-height: 100vh;
+}
+/* Header */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+h1 {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Status badges */
+.badge {
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+  background: var(--sheen), rgba(255, 255, 255, 0.07);
+  box-shadow: var(--specular), 0 4px 12px rgba(0, 0, 0, 0.18);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.badge.ok {
+  background: var(--sheen), rgba(48, 209, 88, 0.2);
+  border-color: rgba(48, 209, 88, 0.4);
+  color: #70f0a0;
+}
+
+.badge.warn {
+  background: var(--sheen), rgba(255, 159, 10, 0.19);
+  border-color: rgba(255, 159, 10, 0.4);
+  color: #ffd080;
+}
+
+.badge.off {
+  background: var(--sheen), rgba(255, 255, 255, 0.07);
+  color: #c4c7d0;
+}
+
+/* Liquid-glass webcam container */
+.videowrap {
+  position: relative;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+
+  box-shadow:
+    var(--specular),
+    0 14px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* Sheen sits over the video; clicks pass through */
+.videowrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--sheen);
+  pointer-events: none;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+}
+
+/* Status message */
+#status {
+  margin: 12px 2px;
+  min-height: 36px;
+  color: var(--text-secondary);
+}
+
+/* Button rows */
+.row {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+/* Glass buttons */
+button {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 16px;
+
+  background: var(--sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  box-shadow:
+    var(--specular),
+    0 8px 22px rgba(0, 0, 0, 0.22);
+
+  transition:
+    transform 0.35s var(--spring),
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+button:hover {
+  background: var(--sheen), var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.03);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+button.primary {
+  background:
+    var(--sheen),
+    linear-gradient(135deg, rgba(10, 132, 255, 0.92), rgba(65, 105, 225, 0.88));
+
+  border: 1px solid rgba(140, 195, 255, 0.55);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+
+  box-shadow:
+    var(--specular),
+    0 6px 22px var(--accent-glow);
+}
+
+button.primary:hover {
+  background:
+    var(--sheen),
+    linear-gradient(135deg, #3297ff, #5278f5);
+
+  box-shadow:
+    var(--specular),
+    0 8px 28px rgba(10, 132, 255, 0.5);
+}
+
+/* Glass settings panels */
+fieldset {
+  background: var(--sheen), var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  margin: 0 0 10px;
+  padding: 14px;
+
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  box-shadow:
+    var(--specular),
+    0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+legend {
+  padding: 0 8px;
+  color: #e3e6f0;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+label {
+  display: block;
+  margin: 5px 0;
+  color: #dcdee6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+label.slider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+label.slider input[type="range"] {
+  width: 150px;
+  accent-color: var(--accent);
+}
+
+/* Dropdown */
+select {
+  background: rgba(35, 37, 47, 0.55);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 6px 10px;
+  outline: none;
+
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--specular);
+
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+select:focus {
+  border-color: rgba(10, 132, 255, 0.85);
+}
+
+/* Voice recognition output */
+#heard {
+  padding: 10px 14px;
+  background: var(--sheen), rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  margin-bottom: 8px;
+  word-break: break-word;
+  color: #e8ecf5;
+
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  box-shadow:
+    var(--specular),
+    0 8px 22px rgba(0, 0, 0, 0.2);
+}
+
+/* Tracking statistics */
+#stats {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+/* Help section */
+details {
+  color: #c8ccd7;
+}
+
+details summary {
+  cursor: pointer;
+  padding: 5px 0;
+}
+
+#help {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tip {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+/* Keyboard accessibility */
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Fallback when backdrop-filter is unsupported: make glass more opaque */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  fieldset,
+  button,
+  #heard,
+  .badge {
+    background-color: rgba(40, 42, 56, 0.85);
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+
+  button:hover,
+  button:active {
+    transform: none;
+  }
+}

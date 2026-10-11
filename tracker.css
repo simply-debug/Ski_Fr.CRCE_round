@@ -1,33 +1,29 @@
 :root {
   color-scheme: dark;
 
-  /* Liquid Glass tokens */
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-bg-hover: rgba(255, 255, 255, 0.12);
-  --glass-border: rgba(255, 255, 255, 0.18);
-  --glass-blur: blur(24px) saturate(180%) brightness(1.08);
+  /* Simplified tokens with less rendering overhead */
+  --glass-bg: rgba(40, 40, 40, 0.65);
+  --glass-bg-hover: rgba(50, 50, 50, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-blur: blur(12px); /* Reduced blur radius for better GPU performance */
 
   --text-primary: #f5f5f7;
   --text-secondary: #b0b3be;
   --accent: #0a84ff;
-  --accent-glow: rgba(10, 132, 255, 0.35);
+  --accent-glow: rgba(10, 132, 255, 0.25);
 
-  /* Diagonal sheen that mimics curved glass catching light */
+  /* Simplified sheen to avoid multi-stop gradient layout thrashing */
   --sheen: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.04) 30%,
-    rgba(255, 255, 255, 0) 55%,
-    rgba(255, 255, 255, 0.06) 100%
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0) 60%
   );
 
-  /* Specular edge: top-left light catch, bottom-right rim, inner glow */
-  --specular:
-    inset 1.5px 1.5px 1px rgba(255, 255, 255, 0.35),
-    inset -1px -1px 1px rgba(255, 255, 255, 0.12),
-    inset 0 0 18px rgba(255, 255, 255, 0.04);
+  /* Simplified specular edge shadow */
+  --specular: inset 1px 1px 1px rgba(255, 255, 255, 0.2);
 
-  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Standard easing function to prevent heavy spring calculations */
+  --easing: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 * {
@@ -40,9 +36,10 @@ body {
   color: var(--text-primary);
   font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: transparent;
+  background: #121212; /* Solid dark background prevents expensive root transparency blending */
   min-height: 100vh;
 }
+
 /* Header */
 header {
   display: flex;
@@ -57,61 +54,44 @@ h1 {
   font-weight: 650;
   letter-spacing: -0.5px;
   margin: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Status badges */
+/* Status badges - removed backdrop-filter for performance */
 .badge {
   padding: 4px 11px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   border: 1px solid var(--glass-border);
-  background: var(--sheen), rgba(255, 255, 255, 0.07);
-  box-shadow: var(--specular), 0 4px 12px rgba(0, 0, 0, 0.18);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .badge.ok {
-  background: var(--sheen), rgba(48, 209, 88, 0.2);
-  border-color: rgba(48, 209, 88, 0.4);
+  background: rgba(48, 209, 88, 0.15);
+  border-color: rgba(48, 209, 88, 0.3);
   color: #70f0a0;
 }
 
 .badge.warn {
-  background: var(--sheen), rgba(255, 159, 10, 0.19);
-  border-color: rgba(255, 159, 10, 0.4);
+  background: rgba(255, 159, 10, 0.15);
+  border-color: rgba(255, 159, 10, 0.3);
   color: #ffd080;
 }
 
 .badge.off {
-  background: var(--sheen), rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
   color: #c4c7d0;
 }
 
-/* Liquid-glass webcam container */
+/* Webcam container optimized with will-change */
 .videowrap {
   position: relative;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--glass-border);
   border-radius: 28px;
   overflow: hidden;
   aspect-ratio: 4 / 3;
-
-  box-shadow:
-    var(--specular),
-    0 14px 40px rgba(0, 0, 0, 0.35);
-}
-
-/* Sheen sits over the video; clicks pass through */
-.videowrap::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--sheen);
-  pointer-events: none;
+  transform: translateZ(0); /* Forces GPU hardware acceleration layer */
 }
 
 video {
@@ -136,13 +116,13 @@ video {
   margin-bottom: 10px;
 }
 
-/* Glass buttons */
+/* Buttons optimized for composited animations */
 button {
   flex: 1;
   padding: 10px 14px;
   border-radius: 16px;
 
-  background: var(--sheen), var(--glass-bg);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
 
@@ -150,82 +130,53 @@ button {
   font-weight: 500;
   cursor: pointer;
 
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  /* Dropped backdrop-filter here to completely eliminate stuttering on hover/click */
+  box-shadow: var(--specular);
 
-  box-shadow:
-    var(--specular),
-    0 8px 22px rgba(0, 0, 0, 0.22);
-
-  transition:
-    transform 0.35s var(--spring),
-    background 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
+  transition: transform 0.2s var(--easing), background-color 0.2s ease;
+  will-change: transform;
 }
 
 button:hover {
-  background: var(--sheen), var(--glass-bg-hover);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: scale(1.03);
+  background: var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 button:active {
-  transform: scale(0.95);
+  transform: translateY(1px) scale(0.98);
 }
 
 button.primary {
-  background:
-    var(--sheen),
-    linear-gradient(135deg, rgba(10, 132, 255, 0.92), rgba(65, 105, 225, 0.88));
-
-  border: 1px solid rgba(140, 195, 255, 0.55);
+  background: var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-
-  box-shadow:
-    var(--specular),
-    0 6px 22px var(--accent-glow);
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 button.primary:hover {
-  background:
-    var(--sheen),
-    linear-gradient(135deg, #3297ff, #5278f5);
-
-  box-shadow:
-    var(--specular),
-    0 8px 28px rgba(10, 132, 255, 0.5);
+  background: #3297ff;
 }
 
-/* Glass settings panels */
+/* Settings panels */
 fieldset {
-  background: var(--sheen), var(--glass-bg);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: 24px;
   margin: 0 0 10px;
   padding: 14px;
-
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-
-  box-shadow:
-    var(--specular),
-    0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
 legend {
   padding: 0 8px;
   color: #e3e6f0;
   font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 label {
   display: block;
   margin: 5px 0;
   color: #dcdee6;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 label.slider {
@@ -242,40 +193,27 @@ label.slider input[type="range"] {
 
 /* Dropdown */
 select {
-  background: rgba(35, 37, 47, 0.55);
+  background: rgba(35, 37, 47, 0.8);
   color: var(--text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   padding: 6px 10px;
   outline: none;
-
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--specular);
-
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 select:focus {
-  border-color: rgba(10, 132, 255, 0.85);
+  border-color: var(--accent);
 }
 
 /* Voice recognition output */
 #heard {
   padding: 10px 14px;
-  background: var(--sheen), rgba(255, 255, 255, 0.055);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: 18px;
   margin-bottom: 8px;
   word-break: break-word;
   color: #e8ecf5;
-
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-
-  box-shadow:
-    var(--specular),
-    0 8px 22px rgba(0, 0, 0, 0.2);
 }
 
 /* Tracking statistics */
@@ -295,45 +233,117 @@ details summary {
   padding: 5px 0;
 }
 
-#help {
+#help, .tip {
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-secondary);
-}
-
-.tip {
-  color: var(--text-secondary);
-  font-size: 12px;
-  margin: 8px 0 0;
 }
 
 /* Keyboard accessibility */
 button:focus-visible,
 select:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-/* Fallback when backdrop-filter is unsupported: make glass more opaque */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  fieldset,
-  button,
-  #heard,
-  .badge {
-    background-color: rgba(40, 42, 56, 0.85);
-  }
-}
-
-/* Reduce motion for users who prefer it */
+/* Reduce motion override */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     transition: none !important;
   }
-
-  button:hover,
-  button:active {
-    transform: none;
-  }
 }
+/* ===================== 3-mode controller UI ===================== */
+h1 { font-size: 18px; letter-spacing: 0.5px; }
+
+/* Large mode selector (easy to hit with a head/eye/hand cursor) */
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+button.mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 72px;
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border-radius: 18px;
+  border: 2px solid var(--glass-border);
+}
+
+button.mode .ico { font-size: 22px; line-height: 1; }
+
+button.mode[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: #fff;
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 4px 14px var(--accent-glow);
+}
+
+.modeline { margin: 4px 2px 0; font-size: 14px; }
+.modedesc { margin: 2px 2px 10px; color: var(--text-secondary); font-size: 12px; min-height: 32px; }
+
+/* High-contrast status chips */
+.chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chip {
+  display: grid;
+  grid-template-columns: 12px auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 2px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chip .dot { grid-row: 1 / span 2; width: 12px; height: 12px; border-radius: 50%; background: #8a8d98; }
+.chip .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; }
+.chip .v { font-size: 13px; font-weight: 700; }
+.chip.ok   { border-color: #30d158; } .chip.ok .dot   { background: #30d158; }
+.chip.warn { border-color: #ff9f0a; } .chip.warn .dot { background: #ff9f0a; }
+.chip.err  { border-color: #ff453a; } .chip.err .dot  { background: #ff453a; }
+
+.banner {
+  background: #ff9f0a;
+  color: #000;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+.banner[hidden] { display: none; }
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1); /* same mirroring as the video */
+  pointer-events: none;
+}
+
+button.big { min-height: 48px; font-size: 14px; font-weight: 600; }
+button.warnbtn { background: #ff9f0a; color: #000; border-color: #fff; }
+button.toggled { background: #30d158; color: #000; border-color: #fff; }
+.row[hidden], button[hidden], label[hidden] { display: none !important; }
+
+input[type="checkbox"] { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; }
+label.slider input[type="range"] { height: 28px; }
+
+#status { font-size: 14px; color: #f0f1f5; min-height: 44px; }
+#gestureHelp { margin-top: 8px; font-size: 12px; color: var(--text-secondary); }

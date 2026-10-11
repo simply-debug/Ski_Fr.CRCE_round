@@ -2,7 +2,6 @@
 // One-time setup: downloads the MediaPipe files the extension needs into ./lib
 // (Chrome extensions may not load code from a CDN, so the files must live inside the extension folder.)
 // Usage:  node setup.js        (needs Node 18 or newer)
-
 const fs = require('fs');
 const path = require('path');
 
@@ -11,6 +10,9 @@ const CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}`;
 const MODEL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
+const HAND_MODEL =
+  'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+
 const FILES = [
   [`${CDN}/vision_bundle.mjs`, 'lib/vision_bundle.mjs'],
   [`${CDN}/wasm/vision_wasm_internal.js`, 'lib/wasm/vision_wasm_internal.js'],
@@ -18,6 +20,7 @@ const FILES = [
   [`${CDN}/wasm/vision_wasm_nosimd_internal.js`, 'lib/wasm/vision_wasm_nosimd_internal.js'],
   [`${CDN}/wasm/vision_wasm_nosimd_internal.wasm`, 'lib/wasm/vision_wasm_nosimd_internal.wasm'],
   [MODEL, 'lib/face_landmarker.task'],
+  [HAND_MODEL, 'lib/hand_landmarker.task'], // a working copy is already bundled; delete it and re-run to get Google's official file
 ];
 
 async function download(url, dest) {

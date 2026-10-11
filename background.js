@@ -11,13 +11,23 @@ async function openTracker() {
   await chrome.windows.create({
     url: TRACKER_URL,
     type: 'popup',
-    width: 360,
-    height: 640,
+    width: 420,
+    height: 860,
     left: 20,
     top: 20,
     focused: true,
   });
 }
+
+// Automatically trigger on first install
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') {
+    // Set first-time storage flag
+    chrome.storage.local.set({ hasCalibrated: false }, () => {
+      openTracker();
+    });
+  }
+});
 
 chrome.action.onClicked.addListener(() => {
   openTracker();

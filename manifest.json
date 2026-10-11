@@ -1,10 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Handsfree Browsing",
-  "version": "0.1.0",
-  "description": "Control Chrome with your head, wink clicks and voice commands using only a webcam and microphone.",
+  "version": "0.2.0",
+  "description": "Control Chrome hands-free in 3 modes - head, eyes, or hands + voice - with voice commands and voice typing in every mode. Webcam and microphone only.",
   "minimum_chrome_version": "110",
-  "action": { "default_title": "Open Handsfree controller" },
+  "icons": {
+    "16": "vision.png",
+    "32": "vision.png",
+    "48": "vision.png",
+    "128": "vision.png"
+  },
+  "action": { 
+    "default_title": "Open Handsfree controller",
+    "default_icon": "vision.png"
+  },
   "background": { "service_worker": "background.js" },
   "permissions": ["tabs", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
@@ -18,5 +27,11 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["cursor.png"], 
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

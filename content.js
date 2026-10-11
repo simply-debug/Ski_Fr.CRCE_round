@@ -1,7 +1,3 @@
-// Handsfree content script. Runs in every page.
-// It stays invisible until the tracker window sends it cursor positions, then it:
-// draws the cursor dot, hover highlight and dwell ring
-// performs clicks, scrolling, numbered link hints, text entry and key presses
 (() => {
   if (window.__handsfreeLoaded) return;
   window.__handsfreeLoaded = true;
@@ -33,8 +29,9 @@
     '[contenteditable=""],[contenteditable="true"]';
 
   let host, root, dot, ring, arc, hl, toastEl, hintsLayer, toastTimer;
+  let lastCheckedX = -999, lastCheckedY = -999; // Track changes to avoid layout thrashing
 
-  // overlay
+  // ---------- overlay ----------
   function build() {
     if (host) return;
     host = document.createElement('div');
@@ -45,13 +42,27 @@
     root.innerHTML = `
       <style>
         *{box-sizing:border-box;font-family:system-ui,"Segoe UI",Arial,sans-serif}
-        #dot{position:fixed;left:0;top:0;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;
-          background:rgba(66,133,244,.35);border:2px solid #1a73e8;box-shadow:0 0 0 2px rgba(255,255,255,.9);
-          will-change:transform;display:none}
+        html, * { cursor: none !important; }
+        #dot {
+          position: fixed;
+          left: 0;
+          top: 0;
+          width: 36px;
+          height: 36px;
+          margin: 0;
+          border-radius: 0;
+          background: url('${chrome.runtime.getURL('cursor.png')}') no-repeat center center;
+          background-size: contain;
+          border: none;
+          box-shadow: none;
+          will-change: transform;
+          display: none;
+          pointer-events: none;
+        }
         #dot.paused{background:rgba(150,150,150,.35);border-color:#777}
         #dot.flash{background:rgba(52,168,83,.75);border-color:#188038}
         #ring{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;display:none;will-change:transform}
-        #hl{position:fixed;border:2px solid #1a73e8;background:rgba(26,115,232,.10);border-radius:4px;display:none}
+        #hl{position:fixed;left:0;top:0;border:2px solid #1a73e8;background:rgba(26,115,232,.10);border-radius:4px;display:none;will-change:transform,width,height}
         #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:70vw;background:rgba(32,33,36,.94);
           color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;line-height:1.35;display:none;text-align:center}
         #toast.big{bottom:auto;top:26%;font-size:26px;padding:18px 28px}
@@ -93,12 +104,10 @@
   function sendStat(kind) {
     try {
       chrome.runtime.sendMessage({ type: 'stat', kind }).catch(() => {});
-    } catch (_) {
-      /* extension was reloaded; ignore */
-    }
+    } catch (_) {}
   }
 
-  // DOM helpers
+  // ---------- DOM helpers ----------
   function deepElementFromPoint(x, y) {
     let el = document.elementFromPoint(x, y);
     let guard = 0;
@@ -135,7 +144,7 @@
       const cx = Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2));
       const cy = Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2));
       const top = deepElementFromPoint(cx, cy);
-      if (!top || !(el === top || el.contains(top) || top.contains(el))) continue; // covered by something else
+      if (!top || !(el === top || el.contains(top) || top.contains(el))) continue;
       if (seen.has(el)) continue;
       seen.add(el);
       out.push({ el, r });
@@ -172,7 +181,7 @@
         const hit = words.filter((w) => w.length > 1 && label.includes(w)).length;
         score = (hit / words.length) * 60;
       }
-      score -= Math.min(10, label.length / 30); // prefer the most specific (shortest) match
+      score -= Math.min(10, label.length / 30);
       if (score > bestScore) {
         bestScore = score;
         best = el;
@@ -181,11 +190,10 @@
     return bestScore >= 52 ? best : null;
   }
 
-  // acting
-  function fire(target, x, y, double) {
+  // ---------- acting ----------
+  function fire(target, x, y, double, secondOnly = false) {
     const a = target.closest && target.closest('a[href]');
     if (a && a.target === '_blank' && a.href && !/^javascript:/i.test(a.href)) {
-      // Synthetic clicks cannot open popups, so ask the extension to open the tab.
       try {
         chrome.runtime.sendMessage({ type: 'openTab', url: a.href }).catch(() => {});
       } catch (_) {}
@@ -200,10 +208,11 @@
     const rounds = double ? 2 : 1;
     target.dispatchEvent(new MouseEvent('mouseover', base));
     target.dispatchEvent(new MouseEvent('mousemove', base));
-    for (let i = 0; i < rounds; i++) {
+    const first = secondOnly ? 1 : 0; // hand mode: the first pinch already sent click #1
+    for (let i = first; i < rounds; i++) {
       target.dispatchEvent(new PointerEvent('pointerdown', { ...base, ...ptr, buttons: 1 }));
       target.dispatchEvent(new MouseEvent('mousedown', { ...base, buttons: 1 }));
-      if (i === 0 && typeof target.focus === 'function') {
+      if (i === first && typeof target.focus === 'function') {
         try { target.focus({ preventScroll: true }); } catch (_) {}
       }
       target.dispatchEvent(new PointerEvent('pointerup', { ...base, ...ptr, buttons: 0 }));
@@ -215,10 +224,10 @@
     return true;
   }
 
-  function clickAt(x, y, double = false) {
+  function clickAt(x, y, double = false, secondOnly = false) {
     const el = deepElementFromPoint(x, y);
     if (!el || el === document.documentElement) return false;
-    return fire(clickableAncestor(el) || el, x, y, double);
+    return fire(clickableAncestor(el) || el, x, y, double, secondOnly);
   }
 
   function scrollableAt(x, y) {
@@ -305,7 +314,7 @@
     }
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
       if (kind === 'clear') setNativeValue(el, '');
-      else if (kind === 'deleteWord') setNativeValue(el, el.value.replace(/\s*\S+\s*$/, ''));
+      else if (kind === 'deleteWord') setNativeValue(el, el.value.replace(/\s*\S+\s*\$/, ''));
       return true;
     }
     if (el.isContentEditable) {
@@ -316,7 +325,7 @@
     return false;
   }
 
-  // numbered hints
+  // ---------- numbered hints ----------
   function clearHints() {
     S.hints = [];
     S.hintsOn = false;
@@ -363,7 +372,7 @@
     return fire(el, S.x, S.y, false);
   }
 
-  // per frame rendering + dwell 
+  // ---------- per-frame rendering + optimized dwell loop ----------
   function frame(now) {
     requestAnimationFrame(frame);
     if (!S.active) return;
@@ -378,20 +387,29 @@
     dot.classList.toggle('paused', S.paused);
     dot.classList.toggle('flash', now < S.flashUntil);
 
-    if (now - S.lastHover > 60) {
-      S.lastHover = now;
-      const el = deepElementFromPoint(S.x, S.y);
-      S.hoverEl = el ? clickableAncestor(el) : null;
+    // Optimized hover check with spatial delta limiting to prevent layout thrashing
+    if (now - S.lastHover > 100) {
+      if (Math.abs(S.x - lastCheckedX) > 4 || Math.abs(S.y - lastCheckedY) > 4) {
+        S.lastHover = now;
+        lastCheckedX = S.x;
+        lastCheckedY = S.y;
+        const el = deepElementFromPoint(S.x, S.y);
+        S.hoverEl = el ? clickableAncestor(el) : null;
+      }
+
       if (S.hoverEl && !S.paused) {
         const r = S.hoverEl.getBoundingClientRect();
         if (r.width * r.height < innerWidth * innerHeight * 0.6) {
           hl.style.display = 'block';
-          hl.style.left = r.left + 'px';
-          hl.style.top = r.top + 'px';
+          hl.style.transform = `translate(${r.left}px, ${r.top}px)`;
           hl.style.width = r.width + 'px';
           hl.style.height = r.height + 'px';
-        } else hl.style.display = 'none';
-      } else hl.style.display = 'none';
+        } else {
+          hl.style.display = 'none';
+        }
+      } else {
+        hl.style.display = 'none';
+      }
     }
 
     if (Math.hypot(S.x - S.anchorX, S.y - S.anchorY) > S.radius) {
@@ -422,7 +440,7 @@
     }
   }
 
-  //  messages from the tracker 
+  // ---------- messages from the tracker ----------
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     switch (msg.type) {
       case 'ping':
@@ -451,13 +469,21 @@
         return false;
       }
       case 'dblclick': {
-        const ok = clickAt(S.x, S.y, true);
+        const ok = clickAt(S.x, S.y, true, !!msg.second);
         sendResponse({ ok });
         return false;
       }
       case 'scroll':
         doScroll(msg.arg);
         return false;
+      case 'scrollBy': {
+        // Continuous scrolling (hand-gesture scroll): instant, pixel based, under the cursor.
+        build();
+        S.active = true;
+        const el = scrollableAt(S.x, S.y);
+        el.scrollBy({ top: Number(msg.dy) || 0, left: Number(msg.dx) || 0, behavior: 'instant' });
+        return false;
+      }
       case 'hintsOn':
         showHints();
         return false;

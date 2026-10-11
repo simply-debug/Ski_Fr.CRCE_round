@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // One-time setup: downloads the MediaPipe files the extension needs into ./lib
 // (Chrome extensions may not load code from a CDN, so the files must live inside the extension folder.)
-// Usage:  node setup.js        (needs Node 18 or newer)
+// Usage: node setup.js (needs Node 18 or newer)
 
 const fs = require('fs');
 const path = require('path');

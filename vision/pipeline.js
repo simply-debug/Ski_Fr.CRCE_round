@@ -54,10 +54,18 @@ export class VisionPipeline {
             minHandPresenceConfidence: 0.5,
             minTrackingConfidence: 0.5,
           });
+    // Same as the original tracker: give the GPU 8 s, then fall back to CPU.
+    let timer;
     try {
-      return await make('GPU');
+      const gpu = make('GPU');
+      const limit = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('GPU init timed out')), 8000);
+      });
+      return await Promise.race([gpu, limit]);
     } catch (_) {
       return await make('CPU');
+    } finally {
+      clearTimeout(timer);
     }
   }
 

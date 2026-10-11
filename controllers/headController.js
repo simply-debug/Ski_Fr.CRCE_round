@@ -15,12 +15,12 @@ export class HeadController extends BaseController {
       storageKey: 'hfCal', // same key the original extension used -> old calibrations keep working
       defaults: { cx: 0, cy: 0, xl: -0.1, xr: 0.1, yu: -0.08, yd: 0.08 },
       minSpan: 0.02,
-      calRequired: true,
+      calRequired: false, // original behaviour: only a hint, calibrate when you want
       warnX: ' Left/right movement was small - turn further next time.',
       warnY: ' Up/down movement was small - tilt further next time.',
       steps: [
         { key: 'center', text: 'Calibration 1/5: look at the CENTER of the screen and hold still' },
-        { key: 'left', text: 'Calibration 2/5: turn your head LEFT, as if aiming at the left edge' },
+        { key: 'left', text: 'Calibration 2/5: turn your head LEFT' },
         { key: 'right', text: 'Calibration 3/5: turn your head RIGHT' },
         { key: 'up', text: 'Calibration 4/5: tilt your head UP' },
         { key: 'down', text: 'Calibration 5/5: tilt your head DOWN' },

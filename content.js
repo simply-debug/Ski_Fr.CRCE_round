@@ -1,3 +1,7 @@
+// Handsfree content script. Runs in every page.
+// It stays invisible until the tracker window sends it cursor positions, then it:
+// draws the cursor dot, hover highlight and dwell ring
+// performs clicks, scrolling, numbered link hints, text entry and key presses
 (() => {
   if (window.__handsfreeLoaded) return;
   window.__handsfreeLoaded = true;
@@ -29,9 +33,8 @@
     '[contenteditable=""],[contenteditable="true"]';
 
   let host, root, dot, ring, arc, hl, toastEl, hintsLayer, toastTimer;
-  let lastCheckedX = -999, lastCheckedY = -999; // Track changes to avoid layout thrashing
 
-  // ---------- overlay ----------
+  // overlay
   function build() {
     if (host) return;
     host = document.createElement('div');
@@ -42,27 +45,73 @@
     root.innerHTML = `
       <style>
         *{box-sizing:border-box;font-family:system-ui,"Segoe UI",Arial,sans-serif}
-        html, * { cursor: none !important; }
         #dot {
-          position: fixed;
-          left: 0;
-          top: 0;
-          width: 36px;
-          height: 36px;
-          margin: 0;
-          border-radius: 0;
-          background: url('${chrome.runtime.getURL('cursor.png')}') no-repeat center center;
-          background-size: contain;
-          border: none;
-          box-shadow: none;
-          will-change: transform;
-          display: none;
-          pointer-events: none;
-        }
-        #dot.paused{background:rgba(150,150,150,.35);border-color:#777}
-        #dot.flash{background:rgba(52,168,83,.75);border-color:#188038}
-        #ring{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;display:none;will-change:transform}
-        #hl{position:fixed;left:0;top:0;border:2px solid #1a73e8;background:rgba(26,115,232,.10);border-radius:4px;display:none;will-change:transform,width,height}
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 25px;
+  height: 25px;
+  margin: -12.5px 0 0 -12.5px;
+  border-radius: 50%;
+  pointer-events: none;
+  display: none;
+  will-change: transform;
+
+  background: radial-gradient(
+    circle at 30% 22%,
+    rgba(255,255,255,.9),
+    rgba(255,255,255,.35) 18%,
+    rgba(255,255,255,.08) 45%,
+    rgba(100,175,255,.25) 75%,
+    rgba(255,255,255,.35) 100%
+  );
+
+  border: 1px solid rgba(255,255,255,.8);
+
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,.9),
+    inset 0 -2px 4px rgba(70,145,255,.25),
+    0 0 10px rgba(255,255,255,.25),
+    0 0 24px rgba(70,145,255,.3),
+    0 5px 12px rgba(0,0,0,.2);
+
+  backdrop-filter: blur(8px) saturate(180%);
+  -webkit-backdrop-filter: blur(8px) saturate(180%);
+
+  transition:
+    width .2s ease,
+    height .2s ease,
+    box-shadow .2s ease;
+}
+
+#dot.paused {
+  filter: grayscale(1);
+  opacity: .65;
+}
+
+#dot.flash {
+  background: radial-gradient(
+    circle at 30% 22%,
+    rgba(255,255,255,.95),
+    rgba(52,168,83,.65)
+  );
+  border-color: rgba(255,255,255,.9);
+  box-shadow: 0 0 22px rgba(52,168,83,.7);
+}
+        #ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  display: none;
+  will-change: transform;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, .45));
+}
+        #hl{position:fixed;border:2px solid #1a73e8;background:rgba(26,115,232,.10);border-radius:4px;display:none}
         #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:70vw;background:rgba(32,33,36,.94);
           color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;line-height:1.35;display:none;text-align:center}
         #toast.big{bottom:auto;top:26%;font-size:26px;padding:18px 28px}
@@ -71,11 +120,25 @@
       </style>
       <div id="hl"></div>
       <div id="hints"></div>
-      <svg id="ring" viewBox="0 0 44 44">
-        <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="4"/>
-        <circle id="arc" cx="22" cy="22" r="19" fill="none" stroke="#1a73e8" stroke-width="4" stroke-linecap="round"
-          stroke-dasharray="119.4" stroke-dashoffset="119.4" transform="rotate(-90 22 22)"/>
-      </svg>
+<svg id="ring" viewBox="0 0 44 44">
+  <circle
+    cx="22" cy="22" r="20"
+    fill="none"
+    stroke="rgba(255,255,255,.22)"
+    stroke-width="2"
+  />
+  <circle
+    id="arc"
+    cx="22" cy="22" r="20"
+    fill="none"
+    stroke="rgba(255,255,255,.9)"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-dasharray="125.66"
+    stroke-dashoffset="125.66"
+    transform="rotate(-90 22 22)"
+  />
+</svg>
       <div id="dot"></div>
       <div id="toast"></div>`;
     dot = root.getElementById('dot');
@@ -104,10 +167,12 @@
   function sendStat(kind) {
     try {
       chrome.runtime.sendMessage({ type: 'stat', kind }).catch(() => {});
-    } catch (_) {}
+    } catch (_) {
+      /* extension was reloaded; ignore */
+    }
   }
 
-  // ---------- DOM helpers ----------
+  // DOM helpers
   function deepElementFromPoint(x, y) {
     let el = document.elementFromPoint(x, y);
     let guard = 0;
@@ -144,7 +209,7 @@
       const cx = Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2));
       const cy = Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2));
       const top = deepElementFromPoint(cx, cy);
-      if (!top || !(el === top || el.contains(top) || top.contains(el))) continue;
+      if (!top || !(el === top || el.contains(top) || top.contains(el))) continue; // covered by something else
       if (seen.has(el)) continue;
       seen.add(el);
       out.push({ el, r });
@@ -181,7 +246,7 @@
         const hit = words.filter((w) => w.length > 1 && label.includes(w)).length;
         score = (hit / words.length) * 60;
       }
-      score -= Math.min(10, label.length / 30);
+      score -= Math.min(10, label.length / 30); // prefer the most specific (shortest) match
       if (score > bestScore) {
         bestScore = score;
         best = el;
@@ -190,10 +255,11 @@
     return bestScore >= 52 ? best : null;
   }
 
-  // ---------- acting ----------
+  // acting
   function fire(target, x, y, double, secondOnly = false) {
     const a = target.closest && target.closest('a[href]');
     if (a && a.target === '_blank' && a.href && !/^javascript:/i.test(a.href)) {
+      // Synthetic clicks cannot open popups, so ask the extension to open the tab.
       try {
         chrome.runtime.sendMessage({ type: 'openTab', url: a.href }).catch(() => {});
       } catch (_) {}
@@ -206,9 +272,9 @@
     };
     const ptr = { pointerId: 1, pointerType: 'mouse', isPrimary: true };
     const rounds = double ? 2 : 1;
+    const first = secondOnly ? 1 : 0; // hand mode: the first pinch already sent click #1
     target.dispatchEvent(new MouseEvent('mouseover', base));
     target.dispatchEvent(new MouseEvent('mousemove', base));
-    const first = secondOnly ? 1 : 0; // hand mode: the first pinch already sent click #1
     for (let i = first; i < rounds; i++) {
       target.dispatchEvent(new PointerEvent('pointerdown', { ...base, ...ptr, buttons: 1 }));
       target.dispatchEvent(new MouseEvent('mousedown', { ...base, buttons: 1 }));
@@ -314,7 +380,7 @@
     }
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
       if (kind === 'clear') setNativeValue(el, '');
-      else if (kind === 'deleteWord') setNativeValue(el, el.value.replace(/\s*\S+\s*\$/, ''));
+      else if (kind === 'deleteWord') setNativeValue(el, el.value.replace(/\s*\S+\s*$/, ''));
       return true;
     }
     if (el.isContentEditable) {
@@ -325,7 +391,7 @@
     return false;
   }
 
-  // ---------- numbered hints ----------
+  // numbered hints
   function clearHints() {
     S.hints = [];
     S.hintsOn = false;
@@ -372,7 +438,7 @@
     return fire(el, S.x, S.y, false);
   }
 
-  // ---------- per-frame rendering + optimized dwell loop ----------
+  // per frame rendering + dwell 
   function frame(now) {
     requestAnimationFrame(frame);
     if (!S.active) return;
@@ -386,30 +452,23 @@
     dot.style.transform = `translate(${S.x}px,${S.y}px)`;
     dot.classList.toggle('paused', S.paused);
     dot.classList.toggle('flash', now < S.flashUntil);
+    dot.style.width = S.hoverEl ? '38px' : '25px';
+    dot.style.height = S.hoverEl ? '38px' : '25px';
 
-    // Optimized hover check with spatial delta limiting to prevent layout thrashing
-    if (now - S.lastHover > 100) {
-      if (Math.abs(S.x - lastCheckedX) > 4 || Math.abs(S.y - lastCheckedY) > 4) {
-        S.lastHover = now;
-        lastCheckedX = S.x;
-        lastCheckedY = S.y;
-        const el = deepElementFromPoint(S.x, S.y);
-        S.hoverEl = el ? clickableAncestor(el) : null;
-      }
-
+    if (now - S.lastHover > 60) {
+      S.lastHover = now;
+      const el = deepElementFromPoint(S.x, S.y);
+      S.hoverEl = el ? clickableAncestor(el) : null;
       if (S.hoverEl && !S.paused) {
         const r = S.hoverEl.getBoundingClientRect();
         if (r.width * r.height < innerWidth * innerHeight * 0.6) {
           hl.style.display = 'block';
-          hl.style.transform = `translate(${r.left}px, ${r.top}px)`;
+          hl.style.left = r.left + 'px';
+          hl.style.top = r.top + 'px';
           hl.style.width = r.width + 'px';
           hl.style.height = r.height + 'px';
-        } else {
-          hl.style.display = 'none';
-        }
-      } else {
-        hl.style.display = 'none';
-      }
+        } else hl.style.display = 'none';
+      } else hl.style.display = 'none';
     }
 
     if (Math.hypot(S.x - S.anchorX, S.y - S.anchorY) > S.radius) {
@@ -421,8 +480,8 @@
     if (S.dwell && !S.paused && S.armed && S.hoverEl) {
       const p = Math.min(1, (now - S.anchorT) / S.dwellMs);
       ring.style.display = 'block';
-      ring.style.transform = `translate(${S.x}px,${S.y}px)`;
-      arc.style.strokeDashoffset = String(119.4 * (1 - p));
+      ring.style.transform = `translate(${S.x + 6}px,${S.y + 7}px)`;
+      arc.style.strokeDashoffset = String(125.66 * (1 - p));
       if (p >= 1) {
         S.armed = false;
         ring.style.display = 'none';
@@ -440,7 +499,7 @@
     }
   }
 
-  // ---------- messages from the tracker ----------
+  //  messages from the tracker 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     switch (msg.type) {
       case 'ping':

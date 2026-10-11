@@ -2,6 +2,7 @@
 // One-time setup: downloads the MediaPipe files the extension needs into ./lib
 // (Chrome extensions may not load code from a CDN, so the files must live inside the extension folder.)
 // Usage:  node setup.js        (needs Node 18 or newer)
+
 const fs = require('fs');
 const path = require('path');
 
@@ -20,7 +21,7 @@ const FILES = [
   [`${CDN}/wasm/vision_wasm_nosimd_internal.js`, 'lib/wasm/vision_wasm_nosimd_internal.js'],
   [`${CDN}/wasm/vision_wasm_nosimd_internal.wasm`, 'lib/wasm/vision_wasm_nosimd_internal.wasm'],
   [MODEL, 'lib/face_landmarker.task'],
-  [HAND_MODEL, 'lib/hand_landmarker.task'], // a working copy is already bundled; delete it and re-run to get Google's official file
+  [HAND_MODEL, 'lib/hand_landmarker.task'],
 ];
 
 async function download(url, dest) {

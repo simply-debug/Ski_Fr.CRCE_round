@@ -1,0 +1,113 @@
+/* LIQUID GLASS CURSOR */
+
+.glass-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+
+  pointer-events: none;
+  z-index: 999999;
+  opacity: 0;
+
+  /* Translucent glass surface */
+  background:
+    radial-gradient(
+      circle at 30% 22%,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.3) 15%,
+      rgba(255, 255, 255, 0.08) 42%,
+      rgba(100, 175, 255, 0.2) 75%,
+      rgba(255, 255, 255, 0.28) 100%
+    );
+
+  /* Reflective glass edge */
+  border: 1px solid rgba(255, 255, 255, 0.65);
+
+  /* Depth and reflections */
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 4px rgba(70, 145, 255, 0.22),
+    0 0 8px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(70, 145, 255, 0.22),
+    0 5px 12px rgba(0, 0, 0, 0.22);
+
+  backdrop-filter: blur(8px) saturate(180%);
+  -webkit-backdrop-filter: blur(8px) saturate(180%);
+
+  transform: translate(-50%, -50%);
+
+  transition:
+    width 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease,
+    border-radius 0.28s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Cursor becomes visible */
+.glass-cursor.visible {
+  opacity: 1;
+}
+
+/* Glass magnification when hovering over buttons */
+.glass-cursor.hover {
+  width: 42px;
+  height: 42px;
+
+  border-color: rgba(255, 255, 255, 0.8);
+
+  background:
+    radial-gradient(
+      circle at 30% 25%,
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.12) 45%,
+      rgba(60, 145, 255, 0.2)
+    );
+
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.7),
+    0 0 15px rgba(255, 255, 255, 0.25),
+    0 0 30px rgba(10, 132, 255, 0.3);
+}
+
+/* Press interaction */
+.glass-cursor.down {
+  width: 18px;
+  height: 18px;
+
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.8),
+    0 0 18px rgba(10, 132, 255, 0.6);
+}
+
+/* Hide the normal mouse pointer when custom cursor is active */
+html.glass-cursor-on,
+html.glass-cursor-on body,
+html.glass-cursor-on button,
+html.glass-cursor-on input,
+html.glass-cursor-on select,
+html.glass-cursor-on a,
+html.glass-cursor-on summary {
+  cursor: none !important;
+}
+
+/* Respect touch devices */
+@media (hover: none), (pointer: coarse) {
+  .glass-cursor {
+    display: none;
+  }
+
+  html.glass-cursor-on,
+  html.glass-cursor-on body,
+  html.glass-cursor-on button,
+  html.glass-cursor-on input,
+  html.glass-cursor-on select,
+  html.glass-cursor-on a,
+  html.glass-cursor-on summary {
+    cursor: auto !important;
+  }
+}

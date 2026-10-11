@@ -1,3 +1,5 @@
+// Handsfree - signal helpers (pure, unit-testable).
+
 // One Euro filter: strong smoothing when the signal is nearly still (kills jitter),
 // light smoothing when it moves fast (keeps the cursor responsive).
 export class OneEuro {
@@ -50,52 +52,76 @@ export function mapAxis(v, center, low, high, gain = 1) {
   return clamp(n, 0, 1);
 }
 
-// Wink / long-blink detector. Feed it blink scores (0..1) every frame.
-// Returns 'wink' once per wink, 'longBlink' once per long closure, otherwise null.
+// Blink detector: 'blink' = short both-eye blink (click), 'longBlink' = ~0.7 s closure (pause/resume).
 export class BlinkDetector {
-  constructor({ closed = 0.55, open = 0.3, winkMs = 320, longMs = 1000 } = {}) {
-    Object.assign(this, { closed, open, winkMs, longMs });
+  constructor({
+    closed = 0.55,
+    open = 0.30,
+    blinkMs = 80,
+    longBlinkMs = 700
+  } = {}) {
+    this.closed = closed;
+    this.open = open;
+    this.blinkMs = blinkMs;
+    this.longBlinkMs = longBlinkMs;
     this.reset();
   }
-  reset() {
-    this.winkStart = null;
-    this.bothStart = null;
-    this.armed = true;
-  }
-  update(left, right, nowMs) {
-    const both = left > this.closed && right > this.closed;
-    const winkL = left > this.closed && right < this.open;
-    const winkR = right > this.closed && left < this.open;
-    const bothOpen = left < this.open && right < this.open;
-    let event = null;
 
-    if (bothOpen) {
-      this.armed = true;
-      this.winkStart = null;
-      this.bothStart = null;
+  reset() {
+    this.blinkStart = null;
+    this.longBlinkTriggered = false;
+  }
+
+  update(left, right, nowMs) {
+    const bothClosed =
+      left >= this.closed && right >= this.closed;
+
+    const bothOpen =
+      left <= this.open && right <= this.open;
+
+    // Start timing when both eyes close.
+    if (bothClosed) {
+      if (this.blinkStart === null) {
+        this.blinkStart = nowMs;
+        this.longBlinkTriggered = false;
+      }
+
+      // Trigger pause/resume once after a long blink.
+      if (
+        !this.longBlinkTriggered &&
+        nowMs - this.blinkStart >= this.longBlinkMs
+      ) {
+        this.longBlinkTriggered = true;
+        return "longBlink";
+      }
+
       return null;
     }
-    if (!this.armed) return null;
 
-    if (winkL || winkR) {
-      this.bothStart = null;
-      if (this.winkStart === null) this.winkStart = nowMs;
-      else if (nowMs - this.winkStart >= this.winkMs) {
-        event = 'wink';
-        this.armed = false;
-        this.winkStart = null;
+    // Detect a blink when both eyes reopen.
+    if (bothOpen && this.blinkStart !== null) {
+      const duration = nowMs - this.blinkStart;
+      const wasLongBlink = this.longBlinkTriggered;
+
+      this.blinkStart = null;
+      this.longBlinkTriggered = false;
+
+      if (!wasLongBlink && duration >= this.blinkMs) {
+        return "blink";
       }
-    } else if (both) {
-      this.winkStart = null;
-      if (this.bothStart === null) this.bothStart = nowMs;
-      else if (nowMs - this.bothStart >= this.longMs) {
-        event = 'longBlink';
-        this.armed = false;
-        this.bothStart = null;
-      }
-    } else {
-      // Transitional frame (one eye half closed): do not reset timers abruptly.
+
+      return null;
     }
-    return event;
+
+    // Reset if the eyes reopen only partially for too long.
+    // Otherwise, retain the timer through brief threshold fluctuations.
+    if (
+      this.blinkStart !== null &&
+      nowMs - this.blinkStart > this.longBlinkMs + 1000
+    ) {
+      this.reset();
+    }
+
+    return null;
   }
 }

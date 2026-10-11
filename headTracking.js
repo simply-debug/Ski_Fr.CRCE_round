@@ -1,3 +1,5 @@
+// headTracking.js
+
 import {
     FaceLandmarker,
     FilesetResolver
@@ -16,23 +18,25 @@ let previousY = 0.5;
 // Controls how smooth the cursor movement will be
 const SMOOTHING_FACTOR = 0.25;
 
-let lastVideoTime = -1;
-
 // Initialize MediaPipe Face Landmarker
 async function initializeFaceLandmarker() {
     const vision = await FilesetResolver.forVisionTasks(
-        chrome.runtime.getURL("lib/wasm")
-    );
+    chrome.runtime.getURL("lib/wasm")
+);
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
             modelAssetPath: chrome.runtime.getURL(
-                "models/face_landmarker.task"
-            )
+    "models/face_landmarker.task"
+)
         },
+
         runningMode: "VIDEO",
+
         numFaces: 1,
+
         outputFaceBlendshapes: false,
+
         outputFacialTransformationMatrixes: true
     });
 
@@ -52,7 +56,7 @@ export async function startHeadTracking(onHeadMove) {
             await initializeFaceLandmarker();
         }
 
-        // Request webcam access with optimized lower resolution[cite: 10]
+        // Request webcam access
         webcam = document.createElement("video");
 
         webcam.autoplay = true;
@@ -62,8 +66,8 @@ export async function startHeadTracking(onHeadMove) {
         webcam.srcObject = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: "user",
-                width: 320,  // Reduced from 640 to lighten GPU load[cite: 10]
-                height: 240  // Reduced from 480[cite: 10]
+                width: 640,
+                height: 480
             },
             audio: false
         });
@@ -74,15 +78,13 @@ export async function startHeadTracking(onHeadMove) {
 
         console.log("Webcam started. Head tracking is active.");
 
-        // Process webcam frames with frame-skipping / time-checking to prevent overload[cite: 10]
+        // Process webcam frames
         function processFrame() {
             if (!isTracking) {
                 return;
             }
 
-            if (webcam.readyState >= 2 && webcam.currentTime !== lastVideoTime) {
-                lastVideoTime = webcam.currentTime;
-
+            if (webcam.readyState >= 2) {
                 const results = faceLandmarker.detectForVideo(
                     webcam,
                     performance.now()
@@ -93,14 +95,14 @@ export async function startHeadTracking(onHeadMove) {
 
                     const landmarks = results.faceLandmarks[0];
 
-                    // Nose landmark as a reference point[cite: 10]
+                    // Nose landmark as a reference point
                     const nose = landmarks[1];
 
-                    // Normalized webcam coordinates[cite: 10]
+                    // Normalized webcam coordinates
                     const rawX = nose.x;
                     const rawY = nose.y;
 
-                    // Smooth sudden changes[cite: 10]
+                    // Smooth sudden changes
                     const smoothX =
                         previousX +
                         SMOOTHING_FACTOR * (rawX - previousX);
@@ -112,7 +114,7 @@ export async function startHeadTracking(onHeadMove) {
                     previousX = smoothX;
                     previousY = smoothY;
 
-                    // Send coordinates to the cursor controller[cite: 10]
+                    // Send coordinates to the cursor controller
                     onHeadMove({
                         x: smoothX,
                         y: smoothY
@@ -147,14 +149,6 @@ export function stopHeadTracking() {
     }
 
     webcam = null;
-
-    // Explicitly release MediaPipe WASM heap memory to prevent memory leaks
-    if (faceLandmarker && typeof faceLandmarker.close === 'function') {
-        try {
-            faceLandmarker.close();
-        } catch (_) {}
-        faceLandmarker = null;
-    }
 
     console.log("Head tracking stopped.");
 }

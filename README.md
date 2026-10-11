@@ -1,69 +1,106 @@
-# Handsfree Browsing (Chrome extension) - v0.2: three control modes
+# Handsfree Browsing (Chrome extension)
 
-Control any website in Chrome hands-free, with a webcam and microphone only. Everything runs on your computer, no server.
+Control any website in Chrome with your **head** (cursor), **wink / dwell** (click) and **voice** (scroll, navigate, type). Uses only a normal webcam and microphone. Everything runs on your computer, no server.
 
-Pick **how the cursor moves**; **voice commands and voice typing work in every mode**:
+## 1. One-time setup (about 5 minutes)
 
-| Mode | Cursor | Click | Also |
-|---|---|---|---|
-| **HEAD** | Move your head | Wink, or dwell (hold still on a link) | Long blink = pause/resume |
-| **EYES** | Look where you want it (iris/gaze) | Dwell (wink also works) | Long blink = pause/resume |
-| **HANDS + VOICE** | Index fingertip | Pinch thumb + index; two quick pinches = double click | Peace sign (index + middle up) and move the hand down/up = scroll |
-
-Voice (all modes): click, double click, scroll, go back/forward, reload, tabs, search, open sites, "show numbers" then "click 5", "click <link text>", "type ...", "dictate" / "stop typing", enter, delete, clear, pause/resume, calibrate, **"head mode" / "eyes mode" / "hands mode"**.
-
-## 1. Setup
-
-The MediaPipe runtime, the face model and a hand model are already inside `lib/`, so the folder works as-is:
-
-1. Chrome -> `chrome://extensions` -> **Developer mode** -> **Load unpacked** -> pick this folder. Pin the extension.
-2. Optional: run `node setup.js` (Node 18+) to re-download the MediaPipe files. To replace the bundled hand model with Google's official file, delete `lib/hand_landmarker.task` first.
+1. Install **Node.js 18+** from https://nodejs.org (skip if `node -v` already works).
+2. Open a terminal **inside this folder** and run:
+   ```
+   node setup.js
+   ```
+   This downloads the MediaPipe face-tracking files (and the hand-tracking model) into `lib/` (about 25 MB). A copy of `hand_landmarker.task` is already included. Chrome extensions are not allowed to load these from the internet, so they must sit inside the folder.
+   *No Node?* Download the 6 files listed at the bottom of this README in your browser and save them at the paths shown.
+3. In Chrome open `chrome://extensions`, switch on **Developer mode** (top right), click **Load unpacked**, and pick this folder.
+4. Click the puzzle-piece icon and **pin** "Handsfree Browsing".
 
 ## 2. Using it
 
-1. Open a normal website (Wikipedia, Google, YouTube...). Click the Handsfree icon; allow **camera** and **microphone**.
-2. Choose **HEAD / EYES / HANDS + VOICE** at the top of the controller window. You can switch any time, by button or by voice, without restarting.
-3. **Calibrate**: head and eyes ask for it automatically the first time you use them (centre, left, right, up, down). Hands calibration is optional (same five steps, sets how far you must reach). Each mode keeps its **own** calibration.
-4. Keep the controller window visible (beside your browser, not behind it).
+1. Open any normal website (Wikipedia, Google, YouTube...).
+2. Click the Handsfree icon. A small **controller window** opens. Allow the **camera** and **microphone** when asked.
+3. Click **Calibrate (12 s)** in the controller and follow the big messages on the page: centre, left, right, up, down. Do it again whenever you change seat or posture.
+4. Keep the controller window visible (beside your browser, not hidden behind it) and keep using Chrome.
+5. After you edit any file, press the reload icon on the extension card in `chrome://extensions`, then reopen the controller.
 
-Status chips show: Tracking (Active / Lost / Paused / Calibrating), Voice (Listening / Typing / Off / Mic unavailable), Camera (In use / Unavailable), Calibration (Done / Needed / Optional). Messages: "Face not detected", "Eyes not detected", "Hand not detected", "Camera unavailable", "Microphone unavailable".
+| What you do | What happens |
+|---|---|
+| Move your head | Blue cursor dot moves on the page |
+| Hold the dot still on a link/button (default 1.3 s) | A ring fills, then it clicks (dwell) |
+| Wink one eye for about 0.3 s | Click. Normal blinks are ignored |
+| Close both eyes for 1 s | Pause or resume (safety switch) |
+| Say **"pause"** / **"resume"** | Same safety switch by voice |
 
-### Tips per mode
-- **Eyes**: sit 50-70 cm away, face evenly lit, keep the head fairly still, calibrate by looking at the real screen edges. Webcam gaze is much less precise than head tracking, so use the **Sensitivity/Smoothness** sliders, bigger links, or "show numbers" + "click 5" for small targets.
-- **Hands**: keep the hand in view and well lit. The cursor freezes while your fingers close for a pinch, so the click lands where you pointed. Raise **Pinch threshold** if pinches are missed, lower it if you get accidental clicks.
+### Three control modes: Head, Eyes, Hands + Voice
+Pick a mode with the big buttons at the top of the controller window, **or say** "head mode", "eyes mode" or "hands mode". Voice commands and voice typing work in every mode. Each mode keeps its own settings and its own calibration.
 
-## 3. Settings (per mode, remembered)
-General: voice commands, voice typing, edge scrolling, language. Per mode: sensitivity, smoothness, dwell on/off, dwell time. Head/Eyes: wink click. Hands: pinch threshold, scroll-gesture speed.
+| Mode | Move the cursor | Click | Notes |
+|---|---|---|---|
+| **HEAD** (default) | Turn / tilt your head | Blink or dwell | Exactly as before |
+| **EYES** | Look where you want the cursor (iris tracking). Keep your head fairly still | Blink or dwell | Asks you to calibrate the first time you use it (look centre, left, right, top, bottom) |
+| **HANDS + VOICE** | Point with your index finger | Pinch thumb + index = click, two quick pinches = double click | Peace sign (index + middle only) and move your hand down / up = scroll down / up. Calibration is optional |
 
-## 4. How it is built
+Eye zoom (wide eyes / raised eyebrows / squint) works in Head and Eyes modes. The small preview shows iris dots (Eyes) or the hand skeleton (Hands) so you can see what the camera sees.
+
+### Voice commands
+- **click**, **double click**
+- **scroll down / up**, **page down / up**, **scroll to top / bottom**
+- **go back**, **go forward**, **refresh**, **new tab**, **close tab**, **next tab**, **previous tab**
+- **show numbers**, then **click 5** (works on any site, the most reliable way to hit small targets)
+- **click about us** / **open contact** (clicks the link or button whose text matches)
+- **type hello world**, or say **dictate** and speak freely, then **stop typing**. While dictating: **enter**, **delete**, **clear**
+- **search for cheap flights**, **open youtube**, **go to wikipedia dot org**
+- **dwell off / dwell on**, **calibrate**, **undo** (counts as a mistake in the stats), **help**
+
+To type: click a text box first (wink, dwell or "click 4"), then speak.
+
+## 3. Measuring it (for your results slide)
+
+The controller window shows live counts: clicks by wink / dwell / voice, commands heard vs not understood, and mistakes.
+
+For a timed comparison, open the benchmark page `eval-test.html`:
+- Easiest: in this folder run `python -m http.server 8000`, then open `http://localhost:8000/eval-test.html`.
+- Choose **Mouse**, press Start, click the 10 circles. Then choose **Handsfree** and repeat. The table shows total time, average per target, misses and accuracy; "Copy results as CSV" pastes into Excel/Sheets.
+
+## 4. Tuning and troubleshooting
+
+- **Cursor jumps around:** raise **Smoothness**, improve lighting (face lit from the front, no bright window behind you), recalibrate.
+- **Cursor does not reach the screen edges:** raise **Sensitivity** or turn your head further during calibration.
+- **Accidental clicks:** turn dwell off (checkbox or say "dwell off") or lengthen **Dwell time**.
+- **"Could not load MediaPipe":** run `node setup.js` again; confirm `lib/vision_bundle.mjs`, `lib/face_landmarker.task` and `lib/wasm/` exist.
+- **Voice not working:** Chrome's speech recognition needs internet. Allow the microphone when prompted. If you clicked Block, click the lock icon in the controller's address bar, allow the mic, and reopen the window.
+- **Nothing happens on a page:** Chrome blocks all extensions on `chrome://` pages, the Chrome Web Store and the new-tab page. Try a normal site.
+- A tab that was open before you installed the extension is handled automatically.
+
+## 5. Known limits (be upfront about these in the demo)
+
+- It cannot control things inside **cross-origin iframes**, Google Docs-style canvas editors, or native `<select>` dropdown menus.
+- Links that open in a new tab are opened by the extension itself (Chrome blocks synthetic popups).
+- Head tracking is far more accurate than webcam eye-gaze, so the cursor follows the head; the eyes are used for clicking.
+- The camera is processed locally and never uploaded. Only the speech audio goes to Google (Chrome's built-in speech service).
+
+## 6. How it is built
 
 ```
-manifest.json           MV3 settings and permissions (unchanged permissions)
-background.js           Opens the controller window
-tracker.html/js/css     Control manager + UI: ONE camera stream, mode switching, calibration flow, settings, status
-tick-worker.js          Frame clock in a Web Worker
-controllers/
-  baseController.js     Shared calibration logic
-  headController.js     MODE 1 - original head pipeline (nose vs eye corners, One Euro)
-  eyeController.js      MODE 2 - iris position inside the eye (landmarks 468-477), averaged, One Euro, fixation dead-band
-  handController.js     MODE 3 - index tip, pinch/double-pinch, scroll gesture
-vision/pipeline.js      Shared MediaPipe loader: only the model the active mode needs is kept in memory
-voice/voiceManager.js   Speech recognition + parsing, independent of the mode
-commands.js             Voice-command parser (original, plus mode commands)
-filters.js              One Euro filter, axis mapping, blink/wink detector (unchanged)
-content.js              Page side: cursor, dwell ring, clicking, scrolling, hints, typing (+ scrollBy, double-pinch support)
-lib/                    MediaPipe runtime + face_landmarker.task + hand_landmarker.task
-eval-test.html          10-target benchmark
-headTracking.js         Legacy standalone module from v0.1 (not used by the controller)
+manifest.json        Manifest V3 settings and permissions
+background.js        Opens the controller window when you click the icon
+tracker.html/js/css  Camera + MediaPipe Face Landmarker + speech recognition + calibration + settings
+tick-worker.js       Frame clock in a Web Worker (so tracking keeps full speed when the window is covered)
+content.js           Runs on every page: cursor dot, dwell ring, clicking, scrolling, number hints, typing
+commands.js          Voice-command parser
+filters.js           One-Euro smoothing filter, head-to-screen mapping, wink/long-blink detector
+setup.js             Downloads MediaPipe into lib/
+eval-test.html       10-target timing benchmark (mouse vs handsfree)
 ```
 
-Only the active controller receives frames, so the three input methods can never fight over the cursor. Voice and gestures all call the same `run()` action handler in `tracker.js`.
+Head position = nose position relative to the eye corners, divided by eye distance, with head-tilt removed. That makes it steady when you lean closer or shift sideways.
 
-### Storage (chrome.storage.local)
-`hfCal` head calibration (same key as v0.1, so existing calibrations keep working) · `hfEyeCal` eye calibration · `hfHandCal` hand calibration · `hfSettings` `{ activeMode, voice:{enabled,typingEnabled}, modes:{head,eyes,hands} }` · `hfCfg` legacy v0.1 settings (still read on upgrade and still written).
+## MediaPipe files (manual download fallback)
 
-## 5. Known limits
-- Cannot control cross-origin iframes, canvas editors (Google Docs), or native `<select>` menus. Chrome blocks extensions on `chrome://` pages and the Web Store.
-- Webcam eye-gaze is approximate; head mode is more accurate.
-- Speech recognition uses Chrome's built-in service and needs internet. Camera frames are processed locally and never uploaded.
-- The bundled `hand_landmarker.task` was assembled from MediaPipe's official hand detector and landmark models (same files Google's `.task` contains) and verified to load in the MediaPipe Tasks runtime.
+Save each at the path shown inside this folder:
+
+- `lib/vision_bundle.mjs` ← https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs
+- `lib/wasm/vision_wasm_internal.js` ← https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js
+- `lib/wasm/vision_wasm_internal.wasm` ← https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.wasm
+- `lib/wasm/vision_wasm_nosimd_internal.js` ← https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_nosimd_internal.js
+- `lib/wasm/vision_wasm_nosimd_internal.wasm` ← https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_nosimd_internal.wasm
+- `lib/face_landmarker.task` ← https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
